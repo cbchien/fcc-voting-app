@@ -1,0 +1,5 @@
+
+<h3>{{vm.title}}</h3>
+<h4>Welcome back, {{vm.user.name}}</h4>
+<h4 ng-if="vm.error">{{vm.error}}</h4>
+<button class="btn btn-danger" ng-click="vm.logOut()">Logout</button>
