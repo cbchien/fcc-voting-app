@@ -1,9 +1,15 @@
 <h3>{{vm.title}}</h3>
 <hr>
-<a href="/login">LogIn</a>
-<br>
-<a href="/register">Register</a>
-<br>
-<a href="/profile">Profile</a>
-<br>
-<a href="/polls">Polls</a>
+<a href="/login" class="btn btn-success">LogIn</a>
+<a href="/register" class="btn btn-success">Register</a>
+<a href="/profile" class="btn btn-info">Profile</a>
+<h5>Login to create your personal poll!</h5>
+<hr>
+<h4>Chosse a poll to vote!</h4>
+<ul>
+	<li ng-repeat="poll in vm.polls">
+		<a href="/poll/{{poll._id}}">
+			{{poll.name}} 
+		</a>
+	</li>
+</ul>

@@ -1,17 +1,19 @@
 <h3>{{vm.message}}</h3>
 <hr>
 <button class="btn btn-danger" ng-click="vm.logOut();" ng-if="vm.currentUser">Logout</button>
-<a href="/" class=" btn btn-success">Back</a>
+<a href="/" class=" btn btn-info">Back</a>
 <br>    
 <h3 ng-if="vm.currentUser">Welcome back, {{vm.currentUser.name}}</h3>
-<hr>   
+<hr>
+<a class="btn btn-info" href="/polls">All Polls</a>   
+<hr>
 <h3 ng-if="vm.polls.length == 0">Your Polls</h3>
 <div>
 <ul>
     <li ng-repeat="poll in vm.polls">
-        Poll Name: {{poll.name}}  
-        <button class="btn btn-link" ng-click="vm.deletePoll(poll._id)">Delete</button>
+        Poll Name: {{poll.name}}  	
         <a href="/poll/{{poll._id}}" class="btn btn-link">View</a>
+        <button class="btn btn-link" ng-click="vm.deletePoll(poll._id)" style="color:red;">Delete</button>
         <div ng-repeat="option in poll.options">
             Option: {{option.name}}
             Votes: {{option.votes}}

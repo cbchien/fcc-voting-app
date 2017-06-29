@@ -1,5 +1,5 @@
 // create db connection
-var db = 'mongodb://localhost:27017/free-code-camp-voting';
+var db = 'mongodb://cbchien46:cbchien46@ds143342.mlab.com:43342/voting';
 
 var port = process.env.PORT || 8000;
 
@@ -19,8 +19,8 @@ var app = express();
 dotenv.config({ verbose: true});
 
 //connect to mongo
-
-mongoose.connect(db, function(err){
+mongoose.Promise = global.Promise;
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/shortUrls', function(err){
 	if(err){console.log(err)}
 }); 
 

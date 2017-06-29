@@ -82,9 +82,27 @@
 
 	app.controller('MainController', MainController);
 
-	function MainController($location, $window) {
+	function MainController($location, $window, $http) {
 		var vm = this;
 		vm.title = "MainController"
+		vm.polls = [];
+		vm.poll = {
+			name: '',
+			options: [{
+				name: '',
+				votes: 0
+			}]
+		}
+
+		vm.getAllPoll = function(){
+			$http.get('/api/polls')
+				 .then(function(res){
+				 	vm.polls = res.data;
+				 }, function(err){
+				 	console.log(err)
+				 })
+		}
+		vm.getAllPoll();
 	}
 
 	app.controller('LoginController', LoginController);
@@ -294,7 +312,7 @@
             $http.get('/api/poll/' + id)
                  .then(function(res) {
                     vm.id = res.data._id;
-                    // vm.owner = res.data.owner;
+                    vm.owner = res.data.owner;
                     vm.poll = res.data.options;
                     console.log(vm.poll);
                     vm.data = res.data;

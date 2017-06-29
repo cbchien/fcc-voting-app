@@ -10,13 +10,13 @@
 	<button ng-click="vm.addOption()" class="btn btn-primary" ng-hide="vm.poll.options.length === 5">Add option</button>
 	<button ng-click="vm.addPoll()" ng-disabled="!vm.poll.name && vm.poll.options.length < 2" class="btn btn-primary">Add poll</button>
 </div>
-<a href="/" class=" btn btn-success">Back</a>
+<a href="/profile" class=" btn btn-success">Profile</a>
 
 <hr>
 <ul>
 	<li ng-repeat="poll in vm.polls">
 		<a href="/poll/{{poll._id}}">
-			{{poll.name}} -- {{poll._id}}
+			{{poll.name}}
 		</a>
 	</li>
 </ul>
