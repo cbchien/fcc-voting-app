@@ -21,7 +21,15 @@ var PollsSchema = new Schema({
 			type: Number,
 			default: 0
 		}
-	}]
+	}],
+	createdAt: {
+		type: Date,
+		default: Date.now()
+	},
+	owner:{
+		type: String,
+		required: true
+	}
 })
 
 var Model = mongoose.model('Polls', PollsSchema);

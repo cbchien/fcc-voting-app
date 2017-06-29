@@ -7,6 +7,131 @@ var jwt = require('jsonwebtoken')
 var User = require('../models/user');
 var Poll = require('../models/polls');
 
+//delete poll
+router.delete('/polls/:id', function(request, response) {
+    Poll.findById(request.params.id, function(err, poll) {
+        if (err) {
+            return response.status(400).send({
+                message: 'No poll with specified id'
+            })
+        }
+        if (poll) {
+            var token = request.headers.authorization.split(' ')[1];
+            jwt.verify(token, 'fcc', function(err, decoded) {
+                if (err) {
+                    return response.status(401).json('Unauthorized request: invalid token')
+                } else {
+                    console.log(poll)
+                    if (decoded.data.name === poll.owner) {
+                        poll.remove(function(err) {
+                            if (err) {
+                                return response.status(400).send(err)
+                            } else {
+                                return response.status(200).send({
+                                    message: 'Deleted poll'
+                                })
+                            }
+                        })
+                    } else {
+                        return response.status(403).send({
+                            message: 'Can only delete own polls'
+                        })
+                    }
+                }
+            })
+        }
+    });
+});
+
+
+//retrieve poll
+router.get('/poll/:id', function(req, res) {
+    Poll.findOne({ _id: req.params.id }, function(err, poll) {
+        if (err) {
+            return res.status(400).send(err)
+        } else {
+            return res.status(200).send(poll)
+        }
+    })
+})
+
+//find poll to mathc user
+router.get('/user-polls/:name', function(req, res) {
+    if (!req.params.name) {
+        return res.status(400).send({
+            message: 'No user name supplied'
+        })
+    } else {
+        Poll.find({ owner: req.params.name }, function(err, documents) {
+            if (err) {
+                return res.status(400).send(err)
+            } else {
+                return res.status(200).send(documents)
+            }
+        })
+    }
+})
+
+
+//add options to existing poll
+router.put('/polls/add-option', function(req, res) {
+    var id = req.body.id;
+    var option = req.body.option;
+    Poll.findById(id, function(err, poll) {
+        if (err) {
+            return res.status(400).send(err)
+        }
+        for (var i = 0; i < poll.options.length; i++) {
+            if (poll.options[i].name === option) {
+                return res.status(403).send({
+                    message: 'Option already exists!'
+                })
+            }
+        }
+        poll.options.push({
+            name: option,
+            votes: 0
+        });
+        poll.save(function(err) {
+        	console.log(res + 'pollsave');
+            if (err) {
+                return res.status(400).send('Problem has occurred in saving poll!');
+            } else {
+                return res.status(201).send('Successfully created a poll option!');
+            }
+        })
+    })
+});
+
+
+
+//put polls
+router.put('/polls/', function(req, res) {
+    console.log(typeof req.body.vote);
+    Poll.findById(req.body.id, function(err, poll) {
+        if (err) {
+            return res.status(400).send(err)
+        }
+        console.log(poll)
+        for (var i = 0; i < poll.options.length; i++) {
+            if (poll.options[i]._id.toString() === req.body.vote) {
+                console.log('hit');
+                poll.options[i].votes += 1;
+                poll.save(function(err) {
+                    if (err) {
+                        return res.status(400).send(err)
+                    } else {
+                        return res.status(200).send({
+                            message: 'Successfully updated poll!'
+                        })
+                    }
+                })
+            }
+        }
+    })
+});
+
+
 //get all polls
 
 router.get('/polls', function(req, res) {
@@ -21,30 +146,24 @@ router.get('/polls', function(req, res) {
 
 //create new poll
 
-router.post('/polls', authentication, function(req, res){
-	console.log(req.body);
-	if(!req.body.options || !req.body.name) {
-		return res.status(400).send('No poll data supplied');
-	}
-	var poll = new Poll();
-	poll.name = req.body.name;
-	poll.options = req.body.options;
-	poll.user = req.body.id;
-
-	poll.save(function(err, document) {
+router.post('/polls', authentication, function(request, response) {
+    var poll = new Poll();
+    poll.name = request.body.name;
+    poll.options = request.body.options;
+    poll.owner = request.body.owner;
+    poll.save(function(err, document) {
         if (err) {
             if (err.code === 11000) {
-                return res.status(400).send('No dupes!');
+                return response.status(400).send('No dupes!');
             }
-            return res.status(400).send(err)
+            return response.status(400).send(err)
         } else {
-            return res.status(201).send({
+            return response.status(201).send({
                 message: 'Successfully created a poll',
                 data: document
             })
         }
     })
-
 })
 
 //token verification
@@ -122,7 +241,7 @@ function authentication(req, res, next){
 		var token = req.headers.authorization.split(' ')[1]
 		jwt.verify(token, process.env.secret, function(err, decoded){
 			if(err){
-				console.log('error with toke');
+				console.log('error with token authentication');
 				return res.status(400).send(err)
 			}
 			console.log('continuing with middleware')

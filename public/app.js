@@ -12,6 +12,7 @@
 				event.preventDefault();
 				$location.path('/login');
 			}
+			// 
 			if($window.localStorage.token && nextRoute.access.restricted === true){
 				$http.post('/api/verify', {token: $window.localStorage.token})
 					 .then(function(res){
@@ -51,7 +52,7 @@
 				restricted: false}
 		});
 
-		$routeProvider.when('/polls/:id', {
+		$routeProvider.when('/poll/:id', {
 			templateUrl: './templates/poll.html',
 			controller: 'PollController',
 			controllerAs: 'vm',
@@ -131,53 +132,107 @@
 				vm.error = err.data.errmsg;
 			});
 		}
+		var onSuccess = function(res) {
+            $window.localStorage.token = res.data;
+            $location.path('/profile');
+        }
+
+        var onError = function(err){
+            if(err.data.code === 11000) {
+                vm.error = "This user already exists";
+            }
+            vm.user = null;
+            $location.path('/register');
+        }
 	}
 
 	app.controller('ProfileController', ProfileController);
 
-	function ProfileController($location, $window, jwtHelper) {
+	function ProfileController($location, $window, jwtHelper, $http, $timeout) {
 		var vm = this;
 		vm.title = "ProfileController";
-		// vm.user = null;
+		vm.currentUser = null;
+		vm.polls = [];
 		var token = $window.localStorage.token;
-		var payload = jwtHelper.decodeToken(token).data;	
-		if(payload){
-			vm.user = payload;
-			// console.log(payload);
-		}
+		// var payload = jwtHelper.decodeToken(token).data;	
+		// if(payload){
+		// 	vm.user = payload;
+		// 	// console.log(payload);
+		// }
 
-		vm.logOut = function() {
-			delete $window.localStorage.token;
-			vm.user = null;
-			$location.path('/login');
-		}
+		vm.getPollsByUser = function() {
+            $http.get('/api/user-polls/'+ vm.currentUser.name)
+                 .then(function(res) {
+                     console.log(res);
+                     vm.polls = res.data;
+                 }, function(err) {
+                     console.log(err)
+                 })
+        }
+
+        vm.deletePoll = function(id) {
+            if(id !== null) {
+                $http.delete('/api/polls/' + id).then(function(res) {
+                    vm.getPollsByUser();
+                }, function(err) {
+                    console.log(err)
+                })
+                     
+            }
+            else {
+                return false;
+            }
+        }
+
+        if(token) {
+           vm.currentUser = jwtHelper.decodeToken(token).data;
+           console.log(vm.currentUser + ' app.js 189')
+           console.log(token + ' app.js 190')
+           console.log(vm.currentUser.name + ' app.js 191')
+           if(vm.currentUser !== null )  {
+               vm.getPollsByUser();
+           }
+        }
+
+        vm.logOut = function() {
+            $window.localStorage.removeItem('token');
+            vm.message = 'Logging you out...'
+            $timeout(function() {
+                vm.message = '';
+                 $location.path('/');
+            }, 2000)
+        }
 	}
 
 	app.controller('PollsController', PollsController);
 
 	function PollsController($location, $window, $http, jwtHelper) {
 		var vm = this;
-		var user = jwtHelper.decodeToken($window.localStorage.token);
-		var id = user.data._id;
+		// var user = jwtHelper.decodeToken($window.localStorage.token);
+		// var id = user.data._id;
 		vm.title = "PollsController"
 		vm.polls = [];
 		vm.poll = {
-			options: [],
 			name: '',
-			user: id
-		}
-
-		vm.poll.options = [{
-			name: '',
-			votes: 0
-		}]
-
-		vm.addOption = function	(){
-			vm.poll.options.push({
+			// user: id,
+			options: [{
 				name: '',
 				votes: 0
-			})
+			}]
 		}
+
+
+		vm.isLoggedIn = function() {
+            if(!$window.localStorage.token) {
+                return false;
+            }
+            if(jwtHelper.decodeToken($window.localStorage.token)) {
+                return true;
+            }
+            return false;   
+        }
+        vm.isLoggedIn();
+
 
 		vm.getAllPoll = function(){
 			$http.get('/api/polls')
@@ -189,28 +244,116 @@
 		}
 		vm.getAllPoll();
 
-		vm.addPoll = function(){
-			if(!vm.poll){
-				console.log('Invalid data')
-				return;
-			}
-			$http.post('/api/polls', vm.poll)
-				 .then(function(res){
-				 	vm.poll = {};
-				 	vm.getAllPoll();
-				 }, function(err){
-				 	vm.poll = {};
-				 	console.log(err)
-				 })
-		}
+		vm.addOption = function() {
+            vm.poll.options.push({
+                name: '',
+                votes: 0
+            })
+        }
+
+        vm.addPoll = function() {
+            if(!$window.localStorage.token) {
+                alert('Cannot create a poll without an account');
+                return;
+            }
+            if(vm.poll) {
+                var payload = {
+                    owner: jwtHelper.decodeToken($window.localStorage.token).data.name || null,
+                    name: vm.poll.name,
+                    options: vm.poll.options,
+                    token: $window.localStorage.token
+                }
+                $http.post('/api/polls', payload).then(onSuccess, onError);
+            }   
+            else {
+                console.log('No poll data supplied');
+            }
+        }
+
+        var onSuccess = function(response) {
+            console.log(response.data)
+            vm.poll = {};
+            vm.getAllPoll();
+        }
+        var onError = function(err) {
+            console.error(err)
+        }
 	}
 
 	app.controller('PollController', PollController);
 
-	function PollController($location, $window) {
-		var vm = this;
-		vm.title = "PollController"
-	}	
+    function PollController($http, $routeParams, $window, $location) {
+        var vm = this;
+        vm.title = "PollController";
+        vm.poll;
+        vm.data;
+        vm.link = 'http://localhost:8000/' + $location.path();
+
+        vm.getPoll  = function() {
+            var id = $routeParams.id;
+            $http.get('/api/poll/' + id)
+                 .then(function(res) {
+                    vm.id = res.data._id;
+                    // vm.owner = res.data.owner;
+                    vm.poll = res.data.options;
+                    console.log(vm.poll);
+                    vm.data = res.data;
+                    google.charts.load('current', {'packages':['corechart']});
+                    google.charts.setOnLoadCallback(drawChart);
+                 }, function(err) {
+                    $location.path('/polls');
+                 })
+        }
+        vm.getPoll();
+
+        vm.addOption = function() {
+            if(vm.option) {
+                $http.put('/api/polls/add-option', { option: vm.option, id: $routeParams.id })
+                     .then(function() {
+                    	vm.poll.push({
+                        name: vm.option,
+                        votes: 0
+                    })
+                    vm.option = null;
+                    vm.getPoll();
+                });
+            }
+            // vm.option = null;
+        }
+
+        function drawChart() {
+        var chartArray = [];
+        chartArray.push(['Name', 'Votes']);
+        for(var i = 0; i < vm.data.options.length; i++){
+            chartArray.push([vm.data.options[i].name, vm.data.options[i].votes ])
+        }
+        console.log(chartArray);
+        var data = google.visualization.arrayToDataTable(chartArray);
+        var options = {
+          title: vm.data.name
+        };
+        var chart = new google.visualization.PieChart(document.getElementById('piechart'));
+        chart.draw(data, options);
+      }
+
+      	vm.vote = function() {
+          if(vm.selected) {
+                console.log(vm.selected, vm.poll);
+                $http.put('/api/polls', { id: $routeParams.id, vote: vm.selected  })
+                   .then(function(response) {
+                       vm.getPoll();
+                   }, function(err) {
+                       console.log(err)
+                   })
+                drawChart();
+          }
+          else {
+              console.log('No poll selected');
+          }
+          drawChart();
+      	}
+
+    }
 
 
 }())
