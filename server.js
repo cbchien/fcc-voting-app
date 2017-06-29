@@ -11,7 +11,7 @@ var router = require('./routes/api')
 var express = require('express');
 var morgan = require('morgan');
 var mongoose = require('mongoose');
-var bodyParser = require('body-Parser');
+var bodyParser = require('body-parser');
 var dotenv = require('dotenv');
 var app = express();
 
